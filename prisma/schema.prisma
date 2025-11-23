@@ -1,0 +1,110 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PostVisibility {
+  PUBLIC
+  PRIVATE
+  FRIENDS
+}
+
+enum ReactionType {
+  LIKE
+  DISLIKE
+  LOVE
+  HAHA
+}
+
+model User {
+  id        String  @id @default(uuid())
+  username  String  @unique @db.VarChar(255)
+  firstName String  @db.VarChar(255)
+  lastName  String  @db.VarChar(255)
+  email     String  @unique @db.VarChar(255)
+  photo     String? @db.VarChar(255)
+  password  String  @db.VarChar(255)
+
+  posts          Post[]
+  comments       Comment[]
+  likedPosts     PostReaction[]
+  commentedPosts CommentReaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([username])
+  @@map("users")
+}
+
+model Post {
+  id         String         @id @default(uuid())
+  content    String         @db.VarChar()
+  visibility PostVisibility @default(PUBLIC)
+  authorId   String
+  author     User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  comments        Comment[]
+  reactedPosts    PostReaction[]
+  reactedComments CommentReaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
+  @@map("posts")
+}
+
+model Comment {
+  id       String  @id @default(uuid())
+  content  String  @db.VarChar()
+  postId   String
+  post     Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId String?
+
+  reactions CommentReaction[]
+  replies   Comment[]         @relation("ParentComment")
+  parent    Comment?          @relation("ParentComment", fields: [parentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+model PostReaction {
+  userId       String
+  postId       String
+  reactionType ReactionType @default(LIKE)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@map("post_reactions")
+}
+
+model CommentReaction {
+  userId       String
+  commentId    String
+  reactionType ReactionType @default(LIKE)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  post    Post?   @relation(fields: [postId], references: [id])
+  postId  String?
+
+  @@id([userId, commentId])
+  @@map("comment_reactions")
+}
