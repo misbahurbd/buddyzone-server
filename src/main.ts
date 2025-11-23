@@ -23,8 +23,9 @@ async function bootstrap() {
   configureSession(app, configService, redisService);
 
   // Start server
-  await app.listen(configService.get<number>('PORT')!);
-  logger.log(`Server is running on port ${configService.get<number>('PORT')!}`);
+  const port = configService.getOrThrow<number>('PORT');
+  await app.listen(port);
+  logger.log(`Server is running on port ${port}`);
 }
 
 void bootstrap();
