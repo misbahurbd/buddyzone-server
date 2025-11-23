@@ -1,8 +1,9 @@
-import { INestApplication } from '@nestjs/common';
+import passport from 'passport';
+import { RedisStore } from 'connect-redis';
 import { ConfigService } from '@nestjs/config';
+import { INestApplication } from '@nestjs/common';
 import session, { SessionOptions } from 'express-session';
 import { EnvVariables } from 'src/common/validators/env-validator';
-import { RedisStore } from 'connect-redis';
 import { RedisService } from 'src/infrastructure/redis/redis.service';
 
 export const configureSession = (
@@ -24,16 +25,22 @@ export const configureSession = (
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
-    store: new RedisStore({ client: redisClient }),
+    store: new RedisStore({
+      client: redisClient,
+      prefix: 'session:',
+      ttl: sessionTTL,
+    }),
     cookie: {
-      maxAge: sessionTTL * 1000,
-      secure: isProduction,
-      sameSite: 'lax',
-      httpOnly: true,
       path: '/',
+      httpOnly: true,
+      secure: isProduction,
+      maxAge: sessionTTL * 1000,
+      sameSite: isProduction ? 'strict' : 'lax',
     },
     rolling: sessionRolling,
   };
 
   app.use(session(sessionOptions));
+  app.use(passport.initialize());
+  app.use(passport.session());
 };

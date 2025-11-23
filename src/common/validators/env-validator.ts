@@ -19,6 +19,7 @@ export const envValidationSchema = z
       .enum(['development', 'production', 'test'])
       .default('development'),
     PORT: z.coerce.number().default(3000),
+    API_URL: z.url(),
     // Frontend Cors Environment Variables
     FRONTEND_ORIGIN: z.string().optional(),
     // Databasec Environment Variables

@@ -5,6 +5,9 @@ import { RedisModule } from './infrastructure/redis/redis.module';
 import { validateEnv } from './common/validators/env-validator';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { HttpExceptionFilter } from './common/filters/htt-exception.filter';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
 @Module({
   imports: [
@@ -16,6 +19,16 @@ import { UsersModule } from './modules/users/users.module';
     RedisModule,
     AuthModule,
     UsersModule,
+  ],
+  providers: [
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
+    },
   ],
 })
 export class AppModule {}

@@ -8,6 +8,7 @@ import { RedisService } from './infrastructure/redis/redis.service';
 import { setupApplication } from './bootstrap/app.bootstrap';
 import { enhanceSecurity } from './bootstrap/security.bootstrap';
 import { configureSession } from './bootstrap/session.bootstrap';
+import { configureSwagger } from './bootstrap/swagger.bootstrap';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -20,6 +21,7 @@ async function bootstrap() {
   // Bootstrap application
   setupApplication(app, configService);
   enhanceSecurity(app, configService);
+  configureSwagger(app, configService);
   configureSession(app, configService, redisService);
 
   // Start server
