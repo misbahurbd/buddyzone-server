@@ -38,6 +38,12 @@ export const envValidationSchema = z
     SESSION_SECRET: z.string(),
     SESSION_TTL: z.coerce.number().default(24 * 60 * 60 * 1000),
     SESSION_ROLLING: booleanSchema.default(false),
+
+    // Cloudinary Environment Variables
+    CLOUDINARY_CLOUD_NAME: z.string(),
+    CLOUDINARY_API_KEY: z.string(),
+    CLOUDINARY_API_SECRET: z.string(),
+    CLOUDINARY_FOLDER: z.string().default('buddyzone'),
   })
   .superRefine((env, ctx) => {
     // Check Production Cors Origin

@@ -54,15 +54,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       errorCode = this.getErrorCode(statusCode);
 
       this.logger.error(
-        `Unexpected error: ${exception instanceof Error ? exception.stack : String(exception)}`,
-        exception instanceof Error ? exception.stack : undefined,
+        `Unexpected error: ${exception instanceof Error ? exception.message : String(exception)}`,
       );
     }
 
     if (statusCode >= 500 || process.env.NODE_ENV !== 'production') {
       this.logger.error(
         `HTTP ${statusCode} ${request.method} ${request.url}: ${message}`,
-        exception instanceof Error ? exception.stack : undefined,
       );
     }
 
