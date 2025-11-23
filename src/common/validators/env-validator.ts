@@ -31,6 +31,12 @@ export const envValidationSchema = z
     REDIS_PASSWORD: z.string().default(''),
     REDIS_DB: z.coerce.number().default(0),
     REDIS_TLS: booleanSchema.default(false),
+
+    // Session Environment Variables
+    SESSION_NAME: z.string().default('sid'),
+    SESSION_SECRET: z.string(),
+    SESSION_TTL: z.coerce.number().default(24 * 60 * 60 * 1000),
+    SESSION_ROLLING: booleanSchema.default(false),
   })
   .superRefine((env, ctx) => {
     // Check Production Cors Origin
