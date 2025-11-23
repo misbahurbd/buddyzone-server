@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  OnApplicationShutdown,
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
@@ -9,9 +10,12 @@ import { createClient, RedisClientOptions, RedisClientType } from 'redis';
 import { EnvVariables } from 'src/common/validators/env-validator';
 
 @Injectable()
-export class RedisService implements OnModuleInit, OnModuleDestroy {
+export class RedisService
+  implements OnModuleInit, OnModuleDestroy, OnApplicationShutdown
+{
   private readonly logger = new Logger(RedisService.name);
   private readonly client: RedisClientType;
+  private isConnected = false;
 
   constructor(private readonly configService: ConfigService<EnvVariables>) {
     const redisOption = this.getRedisOptions();
@@ -22,6 +26,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     try {
       await this.client.connect();
+      this.isConnected = true;
       this.logger.log('Redis connected successfully');
     } catch (error) {
       this.logger.error(
@@ -33,28 +38,44 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    try {
-      await this.client.disconnect();
-      this.logger.log('Redis disconnected successfully');
-    } catch (error) {
-      this.logger.error(
-        'Failed to disconnect from Redis',
-        error instanceof Error ? error.stack : String(error),
-      );
-      throw error;
-    }
+    await this.disconnect();
   }
 
   async onApplicationShutdown() {
+    await this.disconnect();
+  }
+
+  private async disconnect(): Promise<void> {
+    if (!this.isConnected) {
+      this.logger.warn('Redis is not connected, skipping disconnect');
+      return;
+    }
+
+    if (this.client.isOpen === false) {
+      this.logger.warn('Redis client is already closed');
+      this.isConnected = false;
+      return;
+    }
+
     try {
-      await this.client.disconnect();
+      await this.client.quit();
+      this.isConnected = false;
       this.logger.log('Redis disconnected successfully');
     } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('closed') ||
+          error.message.includes('The client is closed'))
+      ) {
+        this.logger.warn('Redis client was already closed');
+        this.isConnected = false;
+        return;
+      }
+
       this.logger.error(
         'Failed to disconnect from Redis',
         error instanceof Error ? error.stack : String(error),
       );
-      throw error;
     }
   }
 

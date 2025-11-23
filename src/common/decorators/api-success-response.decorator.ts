@@ -5,17 +5,17 @@ import {
 } from '../dto/success-response.dto';
 import { ApiExtraModels, ApiResponse, getSchemaPath } from '@nestjs/swagger';
 
-type ApiSuccessResponseOptions = <
-  TDataDto extends ClassType<unknown>,
->(options?: {
+type Options<TDataDto extends ClassType<unknown>> = {
   type?: TDataDto;
   status?: number;
   description?: string;
   withMeta?: boolean;
   isArray?: boolean;
-}) => void;
+};
 
-export const ApiSuccessResponse: ApiSuccessResponseOptions = (options = {}) => {
+export const ApiSuccessResponse = <TDataDto extends ClassType<unknown>>(
+  options: Options<TDataDto> = {},
+) => {
   const {
     status = 200,
     description,
