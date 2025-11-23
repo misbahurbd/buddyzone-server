@@ -17,9 +17,12 @@ enum PostVisibility {
 
 enum ReactionType {
   LIKE
-  DISLIKE
   LOVE
+  CARE
   HAHA
+  WOW
+  SAD
+  ANGRY
 }
 
 model User {
@@ -46,7 +49,7 @@ model User {
 
 model Post {
   id         String         @id @default(uuid())
-  content    String         @db.VarChar()
+  content    String         @db.Text()
   visibility PostVisibility @default(PUBLIC)
   authorId   String
   author     User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -64,7 +67,7 @@ model Post {
 
 model Comment {
   id       String  @id @default(uuid())
-  content  String  @db.VarChar()
+  content  String  @db.Text()
   postId   String
   post     Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
   authorId String
