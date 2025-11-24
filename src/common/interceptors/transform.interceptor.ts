@@ -31,9 +31,9 @@ export class TransformInterceptor<T>
             data as SuccessResponseWithMeta<T>;
 
           return {
-            statusCode: responseData.statusCode,
+            statusCode: responseData.statusCode || 200,
             success: true,
-            message: responseData.message,
+            message: responseData.message || 'Success',
             data: responseData.data,
             ...(responseData.meta && { meta: responseData.meta }),
           };

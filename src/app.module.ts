@@ -5,10 +5,11 @@ import { RedisModule } from './infrastructure/redis/redis.module';
 import { validateEnv } from './common/validators/env-validator';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
-import { UploadsModule } from './modules/uploads/uploads.module';
+import { UploadModule } from './modules/upload/upload.module';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { PostsModule } from './modules/posts/posts.module';
 
 @Module({
   imports: [
@@ -20,7 +21,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     RedisModule,
     AuthModule,
     UsersModule,
-    UploadsModule,
+    UploadModule,
+    PostsModule,
   ],
   providers: [
     {

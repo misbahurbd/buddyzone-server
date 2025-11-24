@@ -30,54 +30,28 @@ export class SuccessResponseDto<T = unknown> {
 }
 
 export class MetaDto {
-  @ApiProperty({
-    description: 'The page of the response',
-    example: 1,
+  @ApiPropertyOptional({
+    description:
+      'Indicates if there are more items available after the current page',
+    example: true,
     required: false,
   })
-  page: number;
+  hasNext?: boolean;
 
-  @ApiProperty({
-    description: 'The limit of the response',
+  @ApiPropertyOptional({
+    description:
+      'The next cursor for pagination. Use this to fetch the next page.',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    required: false,
+  })
+  nextCursor?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'The number of items per page',
     example: 10,
     required: false,
   })
-  limit: number;
-
-  @ApiProperty({
-    description: 'The skip of the response',
-    example: 0,
-    required: false,
-  })
-  skip: number;
-
-  @ApiProperty({
-    description: 'The total of the response',
-    example: 100,
-    required: false,
-  })
-  total?: number;
-
-  @ApiProperty({
-    description: 'The total pages of the response',
-    example: 100,
-    required: false,
-  })
-  totalPages?: number;
-
-  @ApiProperty({
-    description: 'The next cursor of the response',
-    example: '123',
-    required: false,
-  })
-  nextCursor?: string;
-
-  @ApiProperty({
-    description: 'The previous cursor of the response',
-    example: '123',
-    required: false,
-  })
-  previousCursor?: string;
+  limit?: number;
 }
 
 export class SuccessResponseWithMeta<

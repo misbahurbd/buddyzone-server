@@ -17,20 +17,20 @@ import {
   ApiCookieAuth,
   ApiBody,
 } from '@nestjs/swagger';
-import { UploadsService } from './uploads.service';
+import { UploadService } from './upload.service';
 import { UploadFileDto } from './dto/upload-response.dto';
 import { ApiSuccessResponse } from '../../common/decorators/api-success-response.decorator';
 import { FileValidationPipe } from './pipes/file-validation.pipe';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { DeleteFileDto } from './dto/delete-file.dto';
 
-@Controller('uploads')
+@Controller('upload')
 @UseGuards(AuthenticatedGuard)
 @ApiCookieAuth()
-export class UploadsController {
-  constructor(private readonly uploadsService: UploadsService) {}
+export class UploadController {
+  constructor(private readonly uploadService: UploadService) {}
 
-  @Post('files')
+  @Post('')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Upload multiple files',
@@ -94,7 +94,7 @@ export class UploadsController {
       throw new BadRequestException('No files provided');
     }
 
-    const uploadResults = await this.uploadsService.uploadFiles(files);
+    const uploadResults = await this.uploadService.uploadFiles(files);
 
     const fileDtos = uploadResults.map((result) => ({
       publicId: result.publicId,
@@ -114,91 +114,7 @@ export class UploadsController {
     };
   }
 
-  @Post('file')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: 'Upload a single file',
-    description:
-      'Upload a single file to Cloudinary. Supports images, videos, and documents. Maximum 10MB.',
-  })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-          description: 'File to upload (max 10MB)',
-        },
-      },
-      required: ['file'],
-    },
-  })
-  @ApiSuccessResponse({
-    status: 201,
-    description: 'File uploaded successfully',
-    type: UploadFileDto,
-  })
-  @UseInterceptors(
-    FilesInterceptor('file', 1, {
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB
-      },
-    }),
-  )
-  async uploadFile(
-    @UploadedFiles(
-      new FileValidationPipe({
-        maxSize: 10 * 1024 * 1024, // 10MB
-        maxFiles: 1,
-        allowedMimeTypes: [
-          'image/jpeg',
-          'image/jpg',
-          'image/png',
-          'image/gif',
-          'image/webp',
-          'image/svg+xml',
-          'video/mp4',
-          'video/mpeg',
-          'video/quicktime',
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        ],
-      }),
-    )
-    files: Express.Multer.File[],
-  ): Promise<{ message: string; data: UploadFileDto }> {
-    if (!files || files.length === 0) {
-      throw new BadRequestException('No file provided');
-    }
-
-    if (files.length > 1) {
-      throw new BadRequestException('Only one file is allowed');
-    }
-
-    const uploadResult = await this.uploadsService.uploadFile(files[0]);
-
-    const fileDto: UploadFileDto = {
-      publicId: uploadResult.publicId,
-      url: uploadResult.url,
-      secureUrl: uploadResult.secureUrl,
-      width: uploadResult.width,
-      height: uploadResult.height,
-      format: uploadResult.format,
-      resourceType: uploadResult.resourceType,
-      bytes: uploadResult.bytes,
-      createdAt: uploadResult.createdAt,
-    };
-
-    return {
-      message: 'File uploaded successfully',
-      data: fileDto,
-    };
-  }
-
-  @Delete('file')
+  @Delete()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete a file',
@@ -216,7 +132,7 @@ export class UploadsController {
       throw new BadRequestException('Public ID is required');
     }
 
-    await this.uploadsService.deleteFile(publicId, resourceType);
+    await this.uploadService.deleteFile(publicId, resourceType);
 
     return {
       message: 'File deleted successfully',

@@ -6,7 +6,7 @@ import {
 import { UploadResult } from '../../infrastructure/cloudinary/cloudinary.service';
 
 @Injectable()
-export class UploadsService {
+export class UploadService {
   constructor(private readonly cloudinaryService: CloudinaryService) {}
 
   async uploadFile(
