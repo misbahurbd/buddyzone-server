@@ -45,7 +45,10 @@ export class AuthController {
 
     await this.loginWithSession(req, user);
 
-    return user;
+    return {
+      message: 'User registered successfully',
+      data: user,
+    };
   }
 
   @Post('login')

@@ -115,11 +115,11 @@ export class ReactionResponseDto {
   reactionType: ReactionType;
 
   @ApiProperty({
-    description: 'The user who reacted',
+    description: 'The author who reacted',
     type: AutorResponseDto,
     required: true,
   })
-  user: AutorResponseDto;
+  author: AutorResponseDto;
 }
 
 export class CommentResponseDto {
@@ -131,11 +131,26 @@ export class CommentResponseDto {
   id: string;
 
   @ApiProperty({
+    description: 'The parent id of the comment',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    required: false,
+    nullable: true,
+  })
+  parentId: string | null;
+
+  @ApiProperty({
     description: 'The content of the comment',
     example: 'This is a comment',
     required: true,
   })
   content: string;
+
+  @ApiProperty({
+    description: 'The created at date of the comment',
+    example: '2021-01-01',
+    required: true,
+  })
+  createdAt: Date;
 
   @ApiProperty({
     description: 'The author of the comment',
@@ -152,18 +167,19 @@ export class CommentResponseDto {
   reactions: ReactionResponseDto[];
 
   @ApiProperty({
+    description: 'The replies of the comment',
+    type: [CommentResponseDto],
+    required: false,
+    nullable: true,
+  })
+  replies?: CommentResponseDto[];
+
+  @ApiProperty({
     description: 'The total number of reactions of the comment',
     example: 10,
     required: true,
   })
   totalReactions: number;
-
-  @ApiProperty({
-    description: 'The replies of the comment',
-    type: [CommentResponseDto],
-    required: true,
-  })
-  replies: CommentResponseDto[];
 
   @ApiProperty({
     description: 'The total number of replies of the comment',
@@ -196,18 +212,18 @@ export class PostResponseDto extends CreatedPostResponseDto {
   reactions: ReactionResponseDto[];
 
   @ApiProperty({
-    description: 'The total number of reactions of the post',
-    example: 10,
-    required: true,
-  })
-  totalReactions: number;
-
-  @ApiProperty({
     description: 'The comments of the post',
     type: [CommentResponseDto],
     required: true,
   })
   comments: CommentResponseDto[];
+
+  @ApiProperty({
+    description: 'The total number of reactions of the post',
+    example: 10,
+    required: true,
+  })
+  totalReactions: number;
 
   @ApiProperty({
     description: 'The total number of comments of the post',

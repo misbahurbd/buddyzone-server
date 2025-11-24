@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Query,
   Req,
@@ -13,15 +14,18 @@ import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { SessionUserDto } from '../auth/dto/session-user.dto';
 import { ApiSuccessResponse } from 'src/common/decorators/api-success-response.decorator';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation } from '@nestjs/swagger';
 import {
   CreatedPostResponseDto,
   PostResponseDto,
 } from './dto/post-response.dto';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
 import { GetPostsQueryDto } from './dto/get-posts-query.dto';
+import { ReactionDto } from './dto/post-reaction.dto';
+import { PostCommentDto } from './dto/post-comment.dto';
 
 @UseGuards(AuthenticatedGuard)
+@ApiCookieAuth()
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
@@ -65,6 +69,99 @@ export class PostsController {
       message: 'Posts retrieved successfully',
       data: posts.data,
       meta: posts.meta,
+    };
+  }
+
+  @Get(':postId')
+  @ApiOperation({ summary: 'Get a post by id' })
+  @ApiSuccessResponse({
+    status: 200,
+    description: 'Post retrieved successfully',
+    type: PostResponseDto,
+  })
+  async getPostById(
+    @Req() req: Request & { user: SessionUserDto },
+    @Param('postId') postId: string,
+  ) {
+    const post = await this.postsService.getPostById(req.user.id, postId);
+
+    return {
+      message: 'Post retrieved successfully',
+      data: post,
+    };
+  }
+
+  @Post(':postId/react')
+  @ApiOperation({ summary: 'React to a post' })
+  @ApiSuccessResponse({
+    status: 200,
+    description: 'Post reacted successfully',
+    type: PostResponseDto,
+  })
+  async reactToPost(
+    @Req() req: Request & { user: SessionUserDto },
+    @Param('postId') postId: string,
+    @Body() reactToPostDto: ReactionDto,
+  ) {
+    const post = await this.postsService.reactToPost(
+      req.user.id,
+      postId,
+      reactToPostDto,
+    );
+
+    return {
+      message: 'Post reacted successfully',
+      data: post,
+    };
+  }
+
+  @Post(':postId/comment')
+  @ApiOperation({ summary: 'Comment on a post' })
+  @ApiSuccessResponse({
+    status: 200,
+    description: 'Commented on post successfully',
+    type: PostResponseDto,
+  })
+  async commentOnPost(
+    @Req() req: Request & { user: SessionUserDto },
+    @Param('postId') postId: string,
+    @Body() postCommentDto: PostCommentDto,
+  ) {
+    const post = await this.postsService.commentOnPost(
+      req.user.id,
+      postId,
+      postCommentDto,
+    );
+
+    return {
+      message: 'Commented on post successfully',
+      data: post,
+    };
+  }
+
+  @Post(':postId/comment/:commentId/react')
+  @ApiOperation({ summary: 'React to a comment' })
+  @ApiSuccessResponse({
+    status: 200,
+    description: 'Comment reacted successfully',
+    type: PostResponseDto,
+  })
+  async reactToComment(
+    @Req() req: Request & { user: SessionUserDto },
+    @Param('postId') postId: string,
+    @Param('commentId') commentId: string,
+    @Body() reactionDto: ReactionDto,
+  ) {
+    const post = await this.postsService.reactToComment(
+      req.user.id,
+      postId,
+      commentId,
+      reactionDto,
+    );
+
+    return {
+      message: 'Comment reacted successfully',
+      data: post,
     };
   }
 }
