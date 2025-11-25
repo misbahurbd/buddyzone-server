@@ -16,6 +16,7 @@ import { SessionUserDto } from '../auth/dto/session-user.dto';
 import { ApiSuccessResponse } from 'src/common/decorators/api-success-response.decorator';
 import { ApiCookieAuth, ApiOperation } from '@nestjs/swagger';
 import {
+  CommentResponseDto,
   CreatedPostResponseDto,
   PostResponseDto,
   ReactionResponseDto,
@@ -92,6 +93,33 @@ export class PostsController {
     };
   }
 
+  @Get('username/:username')
+  @ApiOperation({ summary: 'Get posts by username' })
+  @ApiSuccessResponse({
+    status: 200,
+    description: 'Posts retrieved successfully',
+    type: PostResponseDto,
+    withMeta: true,
+    isArray: true,
+  })
+  async getPostsByUsername(
+    @Req() req: Request & { user: SessionUserDto },
+    @Param('username') username: string,
+    @Query() query: CursorPaginationQueryDto,
+  ) {
+    const posts = await this.postsService.getPostsByUsername(
+      req.user.id,
+      username,
+      query,
+    );
+
+    return {
+      message: 'Posts retrieved successfully',
+      data: posts.data,
+      meta: posts.meta,
+    };
+  }
+
   @Post(':postId/react')
   @ApiOperation({ summary: 'React to a post' })
   @ApiSuccessResponse({
@@ -163,6 +191,28 @@ export class PostsController {
     return {
       message: 'Comment reacted successfully',
       data: post,
+    };
+  }
+
+  @Get(':postId/comments')
+  @ApiOperation({ summary: 'Get comments to a post' })
+  @ApiSuccessResponse({
+    status: 200,
+    description: 'Comments retrieved successfully',
+    type: CommentResponseDto,
+    withMeta: true,
+    isArray: true,
+  })
+  async getPostComments(
+    @Param('postId') postId: string,
+    @Query() query: CursorPaginationQueryDto,
+  ) {
+    const comments = await this.postsService.getComments(postId, query);
+
+    return {
+      message: 'Comments retrieved successfully',
+      data: comments.data,
+      meta: comments.meta,
     };
   }
 

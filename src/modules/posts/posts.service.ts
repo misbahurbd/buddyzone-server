@@ -86,6 +86,46 @@ export class PostsService {
     }
   }
 
+  async getPostsByUsername(
+    userId: string,
+    username: string,
+    query: CursorPaginationQueryDto,
+  ) {
+    try {
+      const { limit = 10, cursor, order, orderBy = 'createdAt' } = query;
+
+      const posts = await this.prisma.post.findMany({
+        where: {
+          author: { username },
+          OR: [{ authorId: userId }, { visibility: PostVisibility.PUBLIC }],
+        },
+        include: this.getPostInclude(),
+        ...(cursor ? { cursor: { id: cursor } } : {}),
+        take: limit + 1,
+        orderBy: {
+          [orderBy]: order,
+        },
+      });
+
+      const actualPosts = posts.slice(0, limit);
+
+      const hasNext = posts.length > limit;
+      const nextCursor = hasNext ? posts[posts.length - 1].id : null;
+
+      const responseData = await Promise.all(
+        actualPosts.map((post) => this.transformPostResponse(post, userId)),
+      );
+
+      return {
+        data: responseData,
+        meta: { hasNext, nextCursor },
+      };
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException('Failed to get posts by username');
+    }
+  }
+
   async getPostById(userId: string, id: string) {
     try {
       const post = await this.prisma.post.findUnique({
@@ -237,6 +277,120 @@ export class PostsService {
     } catch (error) {
       this.logger.error(error);
       throw new InternalServerErrorException('Failed to react to comment');
+    }
+  }
+
+  async getComments(postId: string, query: CursorPaginationQueryDto) {
+    try {
+      const { limit = 10, cursor, order, orderBy = 'createdAt' } = query;
+
+      const comments = await this.prisma.comment.findMany({
+        where: {
+          postId,
+          parentId: null,
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              photo: true,
+            },
+          },
+          reactions: {
+            select: {
+              reactionType: true,
+              author: {
+                select: {
+                  id: true,
+                  username: true,
+                  firstName: true,
+                  lastName: true,
+                  photo: true,
+                },
+              },
+              createdAt: true,
+            },
+            take: 10,
+            orderBy: {
+              createdAt: Prisma.SortOrder.desc,
+            },
+          },
+          replies: {
+            select: {
+              id: true,
+              parentId: true,
+              content: true,
+              createdAt: true,
+              author: {
+                select: {
+                  id: true,
+                  username: true,
+                  firstName: true,
+                  lastName: true,
+                  photo: true,
+                },
+              },
+              reactions: {
+                select: {
+                  reactionType: true,
+                  author: {
+                    select: {
+                      id: true,
+                      username: true,
+                      firstName: true,
+                      lastName: true,
+                      photo: true,
+                    },
+                  },
+                  createdAt: true,
+                },
+                take: 10,
+                orderBy: {
+                  createdAt: Prisma.SortOrder.desc,
+                },
+              },
+              _count: {
+                select: {
+                  reactions: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              reactions: true,
+              replies: {
+                where: {
+                  parentId: {
+                    not: null,
+                  },
+                },
+              },
+            },
+          },
+        },
+        ...(cursor ? { cursor: { id: cursor } } : {}),
+        take: limit + 1,
+        orderBy: {
+          [orderBy]: order,
+        },
+      });
+
+      const actualComments = comments.slice(0, limit);
+
+      const hasNext = comments.length > limit;
+      const nextCursor = hasNext ? comments[comments.length - 1].id : null;
+
+      return {
+        data: actualComments,
+        meta: { hasNext, nextCursor },
+      };
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException('Failed to get comments');
     }
   }
 
