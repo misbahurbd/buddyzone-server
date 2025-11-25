@@ -40,7 +40,6 @@ export class UsersController {
     @Req() req: Request & { user: SessionUserDto },
     @Body() updateUserDto: UpdateUserDto,
   ) {
-
     const user = await this.usersService.updateUser(req.user.id, updateUserDto);
     return {
       message: 'User profile updated successfully',
