@@ -102,29 +102,37 @@ model Comment {
 }
 
 model PostReaction {
-  authorId       String
+  id           String      @id @default(uuid())
+  authorId     String
   postId       String
   reactionType ReactionType @default(LIKE)
 
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  @@id([authorId, postId])
+  @@unique([authorId, postId])
+  @@index([authorId])
+  @@index([postId])
+  @@index([authorId, postId])
   @@map("post_reactions")
 }
 
 model CommentReaction {
-  authorId       String
+  id           String       @id @default(uuid())
+  authorId     String
   commentId    String
   reactionType ReactionType @default(LIKE)
 
-  author    User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-  @@id([authorId, commentId])
+  @@unique([authorId, commentId])
+  @@index([authorId])
+  @@index([commentId])
+  @@index([authorId, commentId])
   @@map("comment_reactions")
 }

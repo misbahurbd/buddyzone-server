@@ -18,9 +18,10 @@ import { ApiCookieAuth, ApiOperation } from '@nestjs/swagger';
 import {
   CreatedPostResponseDto,
   PostResponseDto,
+  ReactionResponseDto,
 } from './dto/post-response.dto';
 import { AuthenticatedGuard } from '../auth/guards/authenticated.guard';
-import { GetPostsQueryDto } from './dto/get-posts-query.dto';
+import { CursorPaginationQueryDto } from './dto/cursor-pagination-query.dto';
 import { ReactionDto } from './dto/post-reaction.dto';
 import { PostCommentDto } from './dto/post-comment.dto';
 
@@ -61,7 +62,7 @@ export class PostsController {
   })
   async getPosts(
     @Req() req: Request & { user: SessionUserDto },
-    @Query() query: GetPostsQueryDto,
+    @Query() query: CursorPaginationQueryDto,
   ) {
     const posts = await this.postsService.getPosts(req.user.id, query);
 
@@ -162,6 +163,53 @@ export class PostsController {
     return {
       message: 'Comment reacted successfully',
       data: post,
+    };
+  }
+
+  @Get(':postId/reactions')
+  @ApiOperation({ summary: 'Get reactions to a post' })
+  @ApiSuccessResponse({
+    status: 200,
+    description: 'Reactions retrieved successfully',
+    type: ReactionResponseDto,
+    withMeta: true,
+    isArray: true,
+  })
+  async getPostReactions(
+    @Param('postId') postId: string,
+    @Query() query: CursorPaginationQueryDto,
+  ) {
+    const reactions = await this.postsService.getPostReactions(postId, query);
+
+    return {
+      message: 'Reactions retrieved successfully',
+      data: reactions.data,
+      meta: reactions.meta,
+    };
+  }
+
+  @Get('/comment/:commentId/reactions')
+  @ApiOperation({ summary: 'Get reactions to a comment' })
+  @ApiSuccessResponse({
+    status: 200,
+    description: 'Reactions retrieved successfully',
+    type: ReactionResponseDto,
+    withMeta: true,
+    isArray: true,
+  })
+  async getCommentReactions(
+    @Param('commentId') commentId: string,
+    @Query() query: CursorPaginationQueryDto,
+  ) {
+    const reactions = await this.postsService.getCommentReactions(
+      commentId,
+      query,
+    );
+
+    return {
+      message: 'Reactions retrieved successfully',
+      data: reactions.data,
+      meta: reactions.meta,
     };
   }
 }

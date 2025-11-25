@@ -46,19 +46,36 @@ export class UsersService {
     return user;
   }
 
+  private sanitizeForUsername(input: string): string {
+    // Replace spaces with hyphens, remove all non-alphanumeric characters except hyphens and dots
+    return input
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/[^a-z0-9.-]/g, '') // Remove all characters except alphanumeric, hyphens, and dots
+      .replace(/\.{2,}/g, '.') // Replace multiple consecutive dots with single dot
+      .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+      .replace(/^\.+|\.+$/g, ''); // Remove leading/trailing dots
+  }
+
   private async generateUsername(
     firstName: string,
     lastName: string,
     attempt: number = 0,
   ): Promise<string> {
     const maxAttempts = 10;
+
+    // Sanitize inputs
+    const sanitizedFirstName = this.sanitizeForUsername(firstName);
+    const sanitizedLastName = this.sanitizeForUsername(lastName);
+
     if (attempt >= maxAttempts) {
       // Fallback to timestamp-based username if we can't find a unique one
       const timestamp = Date.now().toString().slice(-6);
-      return `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${timestamp}`;
+      return `${sanitizedFirstName}.${sanitizedLastName}.${timestamp}`;
     }
 
-    const baseUsername = `${firstName.toLowerCase()}.${lastName.toLowerCase()}`;
+    const baseUsername = `${sanitizedFirstName}.${sanitizedLastName}`;
     const username = attempt === 0 ? baseUsername : `${baseUsername}${attempt}`;
 
     const user = await this.findByUsername(username);

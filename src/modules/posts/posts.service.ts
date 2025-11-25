@@ -7,7 +7,7 @@ import {
 import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { PostVisibility, Prisma } from 'generated/prisma/client';
-import { GetPostsQueryDto } from './dto/get-posts-query.dto';
+import { CursorPaginationQueryDto } from './dto/cursor-pagination-query.dto';
 import { ReactionDto } from './dto/post-reaction.dto';
 import { PostCommentDto } from './dto/post-comment.dto';
 
@@ -38,14 +38,14 @@ export class PostsService {
         include: this.getPostInclude(),
       });
 
-      return this.transformPostResponse(post);
+      return await this.transformPostResponse(post, userId);
     } catch (error) {
       this.logger.error(error);
       throw new InternalServerErrorException('Failed to create post');
     }
   }
 
-  async getPosts(userId: string, query: GetPostsQueryDto) {
+  async getPosts(userId: string, query: CursorPaginationQueryDto) {
     try {
       const { limit = 10, cursor, order, orderBy = 'createdAt' } = query;
 
@@ -72,8 +72,8 @@ export class PostsService {
       const hasNext = posts.length > limit;
       const nextCursor = hasNext ? posts[posts.length - 1].id : null;
 
-      const responseData = actualPosts.map((post) =>
-        this.transformPostResponse(post),
+      const responseData = await Promise.all(
+        actualPosts.map((post) => this.transformPostResponse(post, userId)),
       );
 
       return {
@@ -102,7 +102,7 @@ export class PostsService {
         );
       }
 
-      return this.transformPostResponse(post);
+      return await this.transformPostResponse(post, userId);
     } catch (error) {
       this.logger.error(error);
       throw new InternalServerErrorException('Failed to get post by id');
@@ -135,7 +135,7 @@ export class PostsService {
         );
       }
 
-      return this.transformPostResponse(post);
+      return await this.transformPostResponse(post, userId);
     } catch (error) {
       this.logger.error(error);
       throw new InternalServerErrorException('Failed to comment on post');
@@ -177,7 +177,7 @@ export class PostsService {
         );
       }
 
-      return this.transformPostResponse(post);
+      return await this.transformPostResponse(post, userId);
     } catch (error) {
       this.logger.error(error);
       throw new InternalServerErrorException('Failed to react to post');
@@ -233,10 +233,95 @@ export class PostsService {
         );
       }
 
-      return this.transformPostResponse(post);
+      return await this.transformPostResponse(post, userId);
     } catch (error) {
       this.logger.error(error);
       throw new InternalServerErrorException('Failed to react to comment');
+    }
+  }
+
+  async getPostReactions(postId: string, query: CursorPaginationQueryDto) {
+    try {
+      const { limit = 10, cursor, order, orderBy = 'createdAt' } = query;
+
+      const reactions = await this.prisma.postReaction.findMany({
+        where: {
+          postId,
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              photo: true,
+            },
+          },
+        },
+        ...(cursor ? { cursor: { id: cursor } } : {}),
+        take: limit + 1,
+        orderBy: {
+          [orderBy]: order,
+        },
+      });
+
+      const actualReactions = reactions.slice(0, limit);
+
+      const hasNext = reactions.length > limit;
+      const nextCursor = hasNext ? reactions[reactions.length - 1].id : null;
+
+      return {
+        data: actualReactions,
+        meta: { hasNext, nextCursor },
+      };
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException('Failed to get post reactions');
+    }
+  }
+
+  async getCommentReactions(
+    commentId: string,
+    query: CursorPaginationQueryDto,
+  ) {
+    try {
+      const { limit = 10, cursor, order, orderBy = 'createdAt' } = query;
+
+      const reactions = await this.prisma.commentReaction.findMany({
+        where: {
+          commentId,
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              photo: true,
+            },
+          },
+        },
+        ...(cursor ? { cursor: { id: cursor } } : {}),
+        take: limit + 1,
+        orderBy: {
+          [orderBy]: order,
+        },
+      });
+
+      const actualReactions = reactions.slice(0, limit);
+
+      const hasNext = reactions.length > limit;
+      const nextCursor = hasNext ? reactions[reactions.length - 1].id : null;
+
+      return {
+        data: actualReactions,
+        meta: { hasNext, nextCursor },
+      };
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException('Failed to get comment reactions');
     }
   }
 
@@ -264,8 +349,9 @@ export class PostsService {
               photo: true,
             },
           },
+          createdAt: true,
         },
-        take: 5,
+        take: 10,
         orderBy: {
           createdAt: Prisma.SortOrder.desc,
         },
@@ -300,8 +386,9 @@ export class PostsService {
                   photo: true,
                 },
               },
+              createdAt: true,
             },
-            take: 2,
+            take: 10,
             orderBy: {
               createdAt: Prisma.SortOrder.desc,
             },
@@ -333,8 +420,9 @@ export class PostsService {
                       photo: true,
                     },
                   },
+                  createdAt: true,
                 },
-                take: 2,
+                take: 10,
                 orderBy: {
                   createdAt: Prisma.SortOrder.desc,
                 },
@@ -346,7 +434,7 @@ export class PostsService {
                 },
               },
             },
-            take: 2,
+            take: 3,
             orderBy: {
               createdAt: Prisma.SortOrder.desc,
             },
@@ -358,7 +446,7 @@ export class PostsService {
             },
           },
         },
-        take: 2,
+        take: 3,
         orderBy: {
           createdAt: Prisma.SortOrder.desc,
         },
@@ -376,9 +464,24 @@ export class PostsService {
     };
   }
 
-  private transformPostResponse(
+  private async transformPostResponse(
     post: Prisma.PostGetPayload<{
       include: {
+        reactions: {
+          select: {
+            reactionType: true;
+            author: {
+              select: {
+                id: true;
+                username: true;
+                firstName: true;
+                lastName: true;
+                photo: true;
+              };
+            };
+            createdAt: true;
+          };
+        };
         comments: {
           select: {
             id: true;
@@ -406,6 +509,7 @@ export class PostsService {
                     photo: true;
                   };
                 };
+                createdAt: true;
               };
             };
             replies: {
@@ -435,6 +539,7 @@ export class PostsService {
                         photo: true;
                       };
                     };
+                    createdAt: true;
                   };
                 };
                 _count: {
@@ -461,33 +566,246 @@ export class PostsService {
         };
       };
     }>,
+    userId: string,
   ) {
-    const { comments, ...restPost } = post;
+    const { comments, reactions, ...restPost } = post;
 
-    return {
-      ...restPost,
-      comments: comments.map((comment) => ({
-        id: comment.id,
-        parentId: comment.parentId,
-        content: comment.content,
-        author: comment.author,
-        createdAt: comment.createdAt,
-        reactions: comment.reactions,
-        replies: comment.replies.map((reply) => ({
+    // Collect all comment and reply IDs for batch queries
+    const commentIds: string[] = [];
+    const replyIds: string[] = [];
+
+    comments.forEach((comment) => {
+      commentIds.push(comment.id);
+      comment.replies.forEach((reply) => {
+        replyIds.push(reply.id);
+      });
+    });
+
+    // Batch fetch user's reactions in parallel
+    type UserCommentReaction = {
+      reactionType: any;
+      author: {
+        id: string;
+        username: string;
+        firstName: string;
+        lastName: string;
+        photo: string | null;
+      };
+      createdAt: Date;
+      commentId: string;
+    };
+
+    const [userPostReaction, userCommentReactions, userReplyReactions] =
+      await Promise.all([
+        // Check if user's post reaction exists in fetched reactions, if not fetch it
+        reactions.find((r) => r.author.id === userId)
+          ? null
+          : this.prisma.postReaction.findUnique({
+              where: {
+                authorId_postId: {
+                  authorId: userId,
+                  postId: post.id,
+                },
+              },
+              select: {
+                reactionType: true,
+                author: {
+                  select: {
+                    id: true,
+                    username: true,
+                    firstName: true,
+                    lastName: true,
+                    photo: true,
+                  },
+                },
+                createdAt: true,
+              },
+            }),
+        // Batch fetch user's reactions for all comments
+        commentIds.length > 0
+          ? this.prisma.commentReaction.findMany({
+              where: {
+                authorId: userId,
+                commentId: { in: commentIds },
+              },
+              select: {
+                reactionType: true,
+                author: {
+                  select: {
+                    id: true,
+                    username: true,
+                    firstName: true,
+                    lastName: true,
+                    photo: true,
+                  },
+                },
+                createdAt: true,
+                commentId: true,
+              },
+            })
+          : Promise.resolve([] as UserCommentReaction[]),
+        // Batch fetch user's reactions for all replies
+        replyIds.length > 0
+          ? this.prisma.commentReaction.findMany({
+              where: {
+                authorId: userId,
+                commentId: { in: replyIds },
+              },
+              select: {
+                reactionType: true,
+                author: {
+                  select: {
+                    id: true,
+                    username: true,
+                    firstName: true,
+                    lastName: true,
+                    photo: true,
+                  },
+                },
+                createdAt: true,
+                commentId: true,
+              },
+            })
+          : Promise.resolve([] as UserCommentReaction[]),
+      ]);
+
+    // Create maps for quick lookup
+    type CommentReactionType = (typeof userCommentReactions)[0];
+    type ReplyReactionType = (typeof userReplyReactions)[0];
+
+    const userCommentReactionsMap = new Map<string, CommentReactionType>();
+    userCommentReactions.forEach((r) => {
+      userCommentReactionsMap.set(r.commentId, r);
+    });
+
+    const userReplyReactionsMap = new Map<string, ReplyReactionType>();
+    userReplyReactions.forEach((r) => {
+      userReplyReactionsMap.set(r.commentId, r);
+    });
+
+    // Process post reactions: merge user's reaction if not already included
+    const existingUserPostReaction = reactions.find(
+      (r) => r.author.id === userId,
+    );
+    const allPostReactions = existingUserPostReaction
+      ? [...reactions]
+      : userPostReaction
+        ? [...reactions, userPostReaction]
+        : [...reactions];
+
+    const processedReactions = this.prioritizeUserItem(
+      allPostReactions,
+      userId,
+      5,
+      (item) => item.author.id === userId,
+    );
+
+    // Process comments
+    const processedComments = this.prioritizeUserItem(
+      comments,
+      userId,
+      3,
+      (item) => item.author.id === userId,
+    ).map((comment) => {
+      // Merge user's comment reaction if not already included
+      const existingUserCommentReaction = comment.reactions.find(
+        (r) => r.author.id === userId,
+      );
+      const userCommentReaction = userCommentReactionsMap.get(comment.id);
+      const allCommentReactions =
+        existingUserCommentReaction || !userCommentReaction
+          ? [...comment.reactions]
+          : [...comment.reactions, userCommentReaction];
+
+      const processedCommentReactions = this.prioritizeUserItem(
+        allCommentReactions,
+        userId,
+        5,
+        (item) => item.author.id === userId,
+      );
+
+      // Process replies
+      const processedReplies = this.prioritizeUserItem(
+        comment.replies,
+        userId,
+        3,
+        (item) => item.author.id === userId,
+      ).map((reply) => {
+        // Merge user's reply reaction if not already included
+        const existingUserReplyReaction = reply.reactions.find(
+          (r) => r.author.id === userId,
+        );
+        const userReplyReaction = userReplyReactionsMap.get(reply.id);
+        const allReplyReactions =
+          existingUserReplyReaction || !userReplyReaction
+            ? [...reply.reactions]
+            : [...reply.reactions, userReplyReaction];
+
+        const processedReplyReactions = this.prioritizeUserItem(
+          allReplyReactions,
+          userId,
+          5,
+          (item) => item.author.id === userId,
+        );
+
+        return {
           id: reply.id,
           parentId: reply.parentId,
           content: reply.content,
           author: reply.author,
           createdAt: reply.createdAt,
-          reactions: reply.reactions,
+          reactions: processedReplyReactions,
           totalReactions: reply._count.reactions,
           totalReplies: reply._count.replies,
-        })),
+        };
+      });
+
+      return {
+        id: comment.id,
+        parentId: comment.parentId,
+        content: comment.content,
+        author: comment.author,
+        createdAt: comment.createdAt,
+        reactions: processedCommentReactions,
+        replies: processedReplies,
         totalReactions: comment._count.reactions,
         totalReplies: comment._count.replies,
-      })),
+      };
+    });
+
+    return {
+      ...restPost,
+      reactions: processedReactions,
+      comments: processedComments,
       totalReactions: post._count.reactions,
       totalComments: post._count.comments,
     };
+  }
+
+  private prioritizeUserItem<T extends { createdAt: Date }>(
+    items: T[],
+    userId: string,
+    targetCount: number,
+    isUserItem: (item: T) => boolean,
+  ): T[] {
+    if (!items || items.length === 0) {
+      return [];
+    }
+
+    const userItemIndex = items.findIndex(isUserItem);
+    const userItem = userItemIndex !== -1 ? items[userItemIndex] : null;
+
+    if (userItem) {
+      const otherItems = items.filter((item, index) => index !== userItemIndex);
+      const additionalCount = targetCount - 1;
+      const additionalItems = otherItems.slice(0, additionalCount);
+
+      const result = [userItem, ...additionalItems];
+      return result.sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+      );
+    } else {
+      return items.slice(0, targetCount);
+    }
   }
 }

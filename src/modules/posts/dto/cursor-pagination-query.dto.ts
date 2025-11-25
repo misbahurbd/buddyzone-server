@@ -7,7 +7,7 @@ export enum Direction {
   NEXT = 'next',
   PREVIOUS = 'previous',
 }
-export class GetPostsQueryDto {
+export class CursorPaginationQueryDto {
   @ApiProperty({
     description: 'The cursor id',
     example: '123e4567-e89b-12d3-a456-426614174000',
