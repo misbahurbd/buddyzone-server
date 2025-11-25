@@ -35,7 +35,7 @@ export const configureSession = (
       httpOnly: true,
       secure: isProduction,
       maxAge: sessionTTL * 1000,
-      sameSite: isProduction ? 'strict' : 'lax',
+      sameSite: 'lax',
     },
     rolling: sessionRolling,
   };
